@@ -1,57 +1,80 @@
-
-
-
     // const express = require("express");
     // const router = express.Router();
     // const sql = require("mssql");
-    // const bcrypt = require("bcrypt");
     // const jwt = require("jsonwebtoken");
     // const config = require("../db");
 
-    // // REGISTER
-    // router.post("/register", async (req, res) => {
-    //     const { username, password, email } = req.body;
 
-    //     // 🌟 Cải thiện: Kiểm tra đầu vào
+    // // ========================== REGISTER ==========================
+    // router.post("/register", async (req, res) => {
+    //     const { username, password, email, isCustomer = 1, isSeller = 0 } = req.body;
+
     //     if (!username || !password || !email) {
-    //         return res.status(400).json({ error: "Vui lòng cung cấp đầy đủ tên người dùng và mật khẩu." });
+    //         return res.status(400).json({ error: "Vui lòng nhập đầy đủ username, password, email." });
     //     }
-        
+
     //     try {
     //         const pool = await sql.connect(config);
 
-    //         // kiểm tra có tồn tại
+    //         // Check username tồn tại
     //         const check = await pool.request()
     //             .input("username", sql.VarChar, username)
-    //             .query("SELECT * FROM [User] WHERE username = @username");
+    //             .query("SELECT * FROM [User] WHERE Username = @username");
 
     //         if (check.recordset.length > 0) {
     //             return res.status(400).json({ error: "Username đã tồn tại!" });
     //         }
 
-    //         // const hashed = await bcrypt.hash(password, 10);
-    //         const hashed = password; // lưu y chang mật khẩu người dùng nhập
-
-    //         await pool.request()
+    //         // Tạo User
+    //         const insertUser = await pool.request()
     //             .input("username", sql.NVarChar, username)
     //             .input("email", sql.NVarChar, email)
     //             .input("password", sql.NVarChar, password)
-                
-    //             .query("INSERT INTO [User] (username, email, password) VALUES (@username, @email, @password)");
+    //             .input("SellerFlag", sql.Bit, isSeller)
+    //             .input("CustomerFlag", sql.Bit, isCustomer)
+    //             .query(`
+    //                 INSERT INTO [User] (Username, Email, Password, SellerFlag, CustomerFlag)
+    //                 OUTPUT INSERTED.UserID
+    //                 VALUES (@username, @email, @password, @SellerFlag, @CustomerFlag)
+    //             `);
 
-    //         res.json({ message: "Đăng ký thành công!" });
+    //         const newUserID = insertUser.recordset[0].UserID;
+
+    //         // Nếu user là customer → tự tạo bản ghi Customer (rất quan trọng)
+    //         if (isCustomer === 1) {
+    //             await pool.request()
+    //                 .input("CustomerID", sql.Int, newUserID)
+    //                 .query(`
+    //                     INSERT INTO Customer (CustomerID, TotalOrders, MemberLevel, RewardPoint)
+    //                     VALUES (@CustomerID, 0, 'Bronze', 0)
+    //                 `);
+    //         }
+
+    //         // Nếu user là seller → tạo bảng Seller
+    //         if (isSeller === 1) {
+    //             await pool.request()
+    //                 .input("SellerID", sql.Int, newUserID)
+    //                 .query(`
+    //                     INSERT INTO Seller (SellerID, SellerStatus)
+    //                     VALUES (@SellerID, 'Active')
+    //                 `);
+    //         }
+
+    //         res.json({ message: "Đăng ký thành công!", userID: newUserID });
 
     //     } catch (err) {
+    //         console.error(err);
     //         res.status(500).json({ error: err.message });
     //     }
     // });
 
-    // // LOGIN
+
+    // // =========================== LOGIN =============================
     // router.post("/login", async (req, res) => {
     //     const { username, password } = req.body;
-    //     // 🌟 Cải thiện: Kiểm tra đầu vào
+
     //     if (!username || !password) {
-    //         return res.status(400).json({ error: "Vui lòng cung cấp đầy đủ tên người dùng và mật khẩu." });
+    //         return res.status(400).json({ error: "Vui lòng nhập username và password." });
     //     }
 
     //     try {
@@ -59,7 +82,11 @@
 
     //         const result = await pool.request()
     //             .input("username", sql.VarChar, username.trim())
-    //             .query("SELECT UserID, username, password, CustomerFlag FROM [User] WHERE username = @username"); // 💡 Tốt nhất nên chỉ chọn các trường cần thiết
+    //             .query(`
+    //                 SELECT UserID, Username, Password, CustomerFlag, SellerFlag
+    //                 FROM [User]
+    //                 WHERE Username = @username
+    //             `);
 
     //         if (result.recordset.length === 0) {
     //             return res.status(400).json({ error: "User không tồn tại!" });
@@ -67,167 +94,283 @@
 
     //         const user = result.recordset[0];
 
-    //         // 🌟 Cải thiện: Đảm bảo user.password có giá trị trước khi so sánh
-    //         if (!user.password) {
-    //              // Lỗi này cho thấy dữ liệu CSDL bị hỏng (mật khẩu là null/undefined)
-    //              console.error(`User ${username} does not have a stored password.`);
-    //              return res.status(500).json({ error: "Lỗi hệ thống: Mật khẩu không hợp lệ." });
-    //         }
-
-    //         if (password.trim() !== user.password.trim()) {
+    //         if (password.trim() !== user.Password.trim()) {
     //             return res.status(400).json({ error: "Sai mật khẩu!" });
     //         }
 
-
     //         const token = jwt.sign(
-    //             { id: user.UserID, username: user.username },
-    //             "secretkey", // ⚠️ LƯU Ý: Khóa bí mật (secretkey) này nên được đặt trong biến môi trường!
+    //             { id: user.UserID, username: user.Username },
+    //             "secretkey",
     //             { expiresIn: "1h" }
     //         );
 
-    //         res.json({ message: "Đăng nhập thành công!", 
-    //                     token,
-    //                     user: {
-    //                         id: user.UserID,
-    //                         username: user.username,
-    //                         isCustomer: user.CustomerFlag
-    //                     } });
+    //         res.json({
+    //             message: "Đăng nhập thành công!",
+    //             token,
+    //             user: {
+    //                 id: user.UserID,
+    //                 username: user.Username,
+    //                 isCustomer: user.CustomerFlag,
+    //                 isSeller: user.SellerFlag
+                    
+    //             }
+    //         });
 
     //     } catch (err) {
-    //         // Trong trường hợp bcrypt.compare() vẫn lỗi (data/hash là kiểu không hợp lệ), nó sẽ rơi vào đây.
+    //         console.error(err);
     //         res.status(500).json({ error: err.message });
     //     }
     // });
+
 
     // module.exports = router;
 
 
 
-
-
     const express = require("express");
-    const router = express.Router();
-    const sql = require("mssql");
-    const jwt = require("jsonwebtoken");
-    const config = require("../db");
+const router = express.Router();
+const sql = require("mssql");
+const jwt = require("jsonwebtoken");
+const config = require("../db");
 
 
-    // ========================== REGISTER ==========================
-    router.post("/register", async (req, res) => {
-        const { username, password, email, isCustomer = 1, isSeller = 0 } = req.body;
+// ========================== REGISTER ==========================
+router.post("/register", async (req, res) => {
+    const { username, password, email } = req.body;
 
-        if (!username || !password || !email) {
-            return res.status(400).json({ error: "Vui lòng nhập đầy đủ username, password, email." });
+    if (!username || !password || !email) {
+        return res.status(400).json({ error: "Vui lòng nhập đầy đủ username, password, email." });
+    }
+
+    try {
+        const pool = await sql.connect(config);
+
+        // Check username tồn tại
+        const check = await pool.request()
+            .input("username", sql.VarChar, username)
+            .query("SELECT * FROM [User] WHERE Username = @username");
+
+        if (check.recordset.length > 0) {
+            return res.status(400).json({ error: "Username đã tồn tại!" });
         }
 
-        try {
-            const pool = await sql.connect(config);
+        // Luôn đặt role = 1 cho tất cả user
+        const isCustomer = 1;
+        const isSeller = 1;
 
-            // Check username tồn tại
-            const check = await pool.request()
-                .input("username", sql.VarChar, username)
-                .query("SELECT * FROM [User] WHERE Username = @username");
+        // Tạo User
+        const insertUser = await pool.request()
+            .input("username", sql.NVarChar, username)
+            .input("email", sql.NVarChar, email)
+            .input("password", sql.NVarChar, password)
+            .input("SellerFlag", sql.Bit, isSeller)
+            .input("CustomerFlag", sql.Bit, isCustomer)
+            .query(`
+                INSERT INTO [User] (Username, Email, Password, SellerFlag, CustomerFlag)
+                OUTPUT INSERTED.UserID
+                VALUES (@username, @email, @password, @SellerFlag, @CustomerFlag)
+            `);
 
-            if (check.recordset.length > 0) {
-                return res.status(400).json({ error: "Username đã tồn tại!" });
-            }
+        const newUserID = insertUser.recordset[0].UserID;
 
-            // Tạo User
-            const insertUser = await pool.request()
-                .input("username", sql.NVarChar, username)
-                .input("email", sql.NVarChar, email)
-                .input("password", sql.NVarChar, password)
-                .input("SellerFlag", sql.Bit, isSeller)
-                .input("CustomerFlag", sql.Bit, isCustomer)
+        // Tạo Customer record
+        await pool.request()
+            .input("CustomerID", sql.Int, newUserID)
+            .query(`
+                INSERT INTO Customer (CustomerID, TotalOrders, MemberLevel, RewardPoint)
+                VALUES (@CustomerID, 0, 'Bronze', 0)
+            `);
+
+        // Tạo Seller record
+        await pool.request()
+            .input("SellerID", sql.Int, newUserID)
+            .query(`
+                INSERT INTO Seller (SellerID, SellerStatus)
+                VALUES (@SellerID, 'Active')
+            `);
+
+        res.json({ message: "Đăng ký thành công!", userID: newUserID });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// =========================== LOGIN =============================
+router.post("/login", async (req, res) => {
+    // const { username, password } = req.body;
+
+    // if (!username || !password) {
+    //     return res.status(400).json({ error: "Vui lòng nhập username và password." });
+    // }
+
+    // try {
+    //     const pool = await sql.connect(config);
+
+    //     const result = await pool.request()
+    //         .input("username", sql.VarChar, username.trim())
+    //         .query(`
+    //             SELECT UserID, Username, Password, CustomerFlag, SellerFlag
+    //             FROM [User]
+    //             WHERE Username = @username
+    //         `);
+
+    //     if (result.recordset.length === 0) {
+    //         return res.status(400).json({ error: "User không tồn tại!" });
+    //     }
+
+    //     const user = result.recordset[0];
+
+    //     if (password.trim() !== user.Password.trim()) {
+    //         return res.status(400).json({ error: "Sai mật khẩu!" });
+    //     }
+
+    //     const userId = user.UserID;
+
+    //     // 🔥 TỰ ĐỘNG TẠO CUSTOMER CHO USER CŨ (nếu chưa có)
+    //     const checkCustomer = await pool.request()
+    //         .input("id", sql.Int, userId)
+    //         .query("SELECT * FROM Customer WHERE CustomerID = @id");
+
+    //     if (checkCustomer.recordset.length === 0) {
+    //         await pool.request()
+    //             .input("id", sql.Int, userId)
+    //             .query(`
+    //                 INSERT INTO Customer(CustomerID, TotalOrders, MemberLevel, RewardPoint)
+    //                 VALUES(@id, 0, 'Bronze', 0)
+    //             `);
+    //     }
+
+    //     // 🔥 TỰ ĐỘNG TẠO SELLER CHO USER CŨ (nếu chưa có)
+    //     const checkSeller = await pool.request()
+    //         .input("id", sql.Int, userId)
+    //         .query("SELECT * FROM Seller WHERE SellerID = @id");
+
+    //     if (checkSeller.recordset.length === 0) {
+    //         await pool.request()
+    //             .input("id", sql.Int, userId)
+    //             .query(`
+    //                 INSERT INTO Seller(SellerID, SellerStatus)
+    //                 VALUES(@id, 'Active')
+    //             `);
+    //     }
+
+    //     // Luôn trả về role = 1
+    //     const token = jwt.sign(
+    //         { id: userId, username: user.Username },
+    //         "secretkey",
+    //         { expiresIn: "1h" }
+    //     );
+
+    //     res.json({
+    //         message: "Đăng nhập thành công!",
+    //         token,
+    //         user: {
+    //             id: userId,
+    //             username: user.Username,
+    //             isCustomer: 1,
+    //             isSeller: 1
+    //         }
+    //     });
+
+    // } catch (err) {
+    //     console.error(err);
+    //     res.status(500).json({ error: err.message });
+    // }
+
+
+
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({ error: "Vui lòng nhập username và password." });
+    }
+
+    try {
+        const pool = await sql.connect(config);
+
+        const result = await pool.request()
+            .input("username", sql.VarChar, username.trim())
+            .query(`
+                SELECT UserID, Username, Password, CustomerFlag, SellerFlag
+                FROM [User]
+                WHERE Username = @username
+            `);
+
+        if (result.recordset.length === 0) {
+            return res.status(400).json({ error: "User không tồn tại!" });
+        }
+
+        const user = result.recordset[0];
+
+        if (password.trim() !== user.Password.trim()) {
+            return res.status(400).json({ error: "Sai mật khẩu!" });
+        }
+
+        const userId = user.UserID;
+
+        // 🔥 AUTO UPDATE role cho user cũ
+        await pool.request()
+            .input("id", sql.Int, userId)
+            .query(`
+                UPDATE [User]
+                SET SellerFlag = 1, CustomerFlag = 1
+                WHERE UserID = @id
+            `);
+
+        // 🔥 Tự tạo Customer record nếu chưa có
+        const checkCustomer = await pool.request()
+            .input("id", sql.Int, userId)
+            .query("SELECT * FROM Customer WHERE CustomerID = @id");
+
+        if (checkCustomer.recordset.length === 0) {
+            await pool.request()
+                .input("id", sql.Int, userId)
                 .query(`
-                    INSERT INTO [User] (Username, Email, Password, SellerFlag, CustomerFlag)
-                    OUTPUT INSERTED.UserID
-                    VALUES (@username, @email, @password, @SellerFlag, @CustomerFlag)
+                    INSERT INTO Customer(CustomerID, TotalOrders, MemberLevel, RewardPoint)
+                    VALUES(@id, 0, 'Bronze', 0)
                 `);
-
-            const newUserID = insertUser.recordset[0].UserID;
-
-            // Nếu user là customer → tự tạo bản ghi Customer (rất quan trọng)
-            if (isCustomer === 1) {
-                await pool.request()
-                    .input("CustomerID", sql.Int, newUserID)
-                    .query(`
-                        INSERT INTO Customer (CustomerID, TotalOrders, MemberLevel, RewardPoint)
-                        VALUES (@CustomerID, 0, 'Bronze', 0)
-                    `);
-            }
-
-            // Nếu user là seller → tạo bảng Seller
-            if (isSeller === 1) {
-                await pool.request()
-                    .input("SellerID", sql.Int, newUserID)
-                    .query(`
-                        INSERT INTO Seller (SellerID, SellerStatus)
-                        VALUES (@SellerID, 'Active')
-                    `);
-            }
-
-            res.json({ message: "Đăng ký thành công!", userID: newUserID });
-
-        } catch (err) {
-            console.error(err);
-            res.status(500).json({ error: err.message });
-        }
-    });
-
-
-    // =========================== LOGIN =============================
-    router.post("/login", async (req, res) => {
-        const { username, password } = req.body;
-
-        if (!username || !password) {
-            return res.status(400).json({ error: "Vui lòng nhập username và password." });
         }
 
-        try {
-            const pool = await sql.connect(config);
+        // 🔥 Tự tạo Seller record nếu chưa có
+        const checkSeller = await pool.request()
+            .input("id", sql.Int, userId)
+            .query("SELECT * FROM Seller WHERE SellerID = @id");
 
-            const result = await pool.request()
-                .input("username", sql.VarChar, username.trim())
+        if (checkSeller.recordset.length === 0) {
+            await pool.request()
+                .input("id", sql.Int, userId)
                 .query(`
-                    SELECT UserID, Username, Password, CustomerFlag, SellerFlag
-                    FROM [User]
-                    WHERE Username = @username
+                    INSERT INTO Seller(SellerID, SellerStatus)
+                    VALUES(@id, 'Active')
                 `);
-
-            if (result.recordset.length === 0) {
-                return res.status(400).json({ error: "User không tồn tại!" });
-            }
-
-            const user = result.recordset[0];
-
-            if (password.trim() !== user.Password.trim()) {
-                return res.status(400).json({ error: "Sai mật khẩu!" });
-            }
-
-            const token = jwt.sign(
-                { id: user.UserID, username: user.Username },
-                "secretkey",
-                { expiresIn: "1h" }
-            );
-
-            res.json({
-                message: "Đăng nhập thành công!",
-                token,
-                user: {
-                    id: user.UserID,
-                    username: user.Username,
-                    isCustomer: user.CustomerFlag,
-                    isSeller: user.SellerFlag
-                    
-                }
-            });
-
-        } catch (err) {
-            console.error(err);
-            res.status(500).json({ error: err.message });
         }
-    });
+
+        const token = jwt.sign(
+            { id: userId, username: user.Username },
+            "secretkey",
+            { expiresIn: "1h" }
+        );
+
+        // Trả về luôn trạng thái mới
+        res.json({
+            message: "Đăng nhập thành công!",
+            token,
+            user: {
+                id: userId,
+                username: user.Username,
+                isCustomer: 1,
+                isSeller: 1
+            }
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
 
 
-    module.exports = router;
+module.exports = router;

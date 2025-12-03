@@ -262,83 +262,183 @@ router.get("/:customerId", async (req, res) => {
 
 // THANH TOÁN GIỎ HÀNG
 router.post("/checkout", async (req, res) => {
+    // const { customerId, paymentMethod } = req.body;
+
+    // try {
+    //     const pool = await sql.connect(config);
+
+    //     // Lấy CartID
+    //     const cartResult = await pool.request()
+    //         .input("CustomerID", sql.Int, customerId)
+    //         .query("SELECT CartID FROM Cart WHERE CustomerID_Cart=@CustomerID");
+
+    //     if (cartResult.recordset.length === 0)
+    //         return res.status(400).json({ error: "Giỏ hàng trống!" });
+
+    //     const cartId = cartResult.recordset[0].CartID;
+
+    //     // Lấy Cart_Item
+    //     const items = await pool.request()
+    //         .input("CartID", sql.Int, cartId)
+    //         .query(`SELECT * FROM Cart_Item WHERE CartID_Item=@CartID`);
+
+    //     if (items.recordset.length === 0)
+    //         return res.status(400).json({ error: "Không có sản phẩm trong giỏ!" });
+
+    //     const cartItems = items.recordset;
+
+    //     // Tính tổng tiền
+    //     let total = 0;
+    //     cartItems.forEach(i => {
+    //         total += i.CartQuantity * parseFloat(i.PriceAtAddTime);
+    //     });
+
+    //     const shippingFee = 30000;
+    //     const finalTotal = total + shippingFee;
+
+    //     // Tạo Order
+    //     const orderResult = await pool.request()
+    //         .input("Amount", sql.Decimal(18, 2), finalTotal)
+    //         .input("Method", sql.NVarChar, paymentMethod)
+    //         .input("Status", sql.NVarChar, "Completed")
+    //         .input("Date", sql.Date, new Date())
+    //         .input("CustomerID", sql.Int, customerId)
+    //         .query(`
+    //             INSERT INTO [Order] (TotalAmountOrder, PaymentMethod, OrderStatus, OrderDate, CustomerID_Order)
+    //             OUTPUT inserted.OrderID
+    //             VALUES (@Amount, @Method, @Status, @Date, @CustomerID)
+    //         `);
+
+    //     const orderId = orderResult.recordset[0].OrderID;
+
+    //     // Thêm Order_Detail
+    //     for (const item of cartItems) {
+    //         await pool.request()
+    //             .input("OrderID", sql.Int, orderId)
+    //             .input("ProductID", sql.Int, item.ProductID_Item)
+    //             .input("Quantity", sql.Int, item.CartQuantity)
+    //             .input("Price", sql.Decimal(18,2), item.PriceAtAddTime)
+    //             .query(`
+    //                 INSERT INTO Order_Detail (OrderID_Detail, ProductID_Detail, OrderQuantity, UnitPrice)
+    //                 VALUES (@OrderID, @ProductID, @Quantity, @Price)
+    //             `);
+    //     }
+
+    //     // Xóa giỏ hàng
+    //     await pool.request()
+    //         .input("CartID", sql.Int, cartId)
+    //         .query("DELETE FROM Cart_Item WHERE CartID_Item=@CartID");
+
+    //     await pool.request()
+    //         .input("CartID", sql.Int, cartId)
+    //         .query("DELETE FROM Cart WHERE CartID=@CartID");
+
+    //     res.json({ message: "Thanh toán thành công!" });
+
+    // } catch (err) {
+    //     console.error(err);
+    //     res.status(500).json({ error: err.message });
+    // }
+
+
+
     const { customerId, paymentMethod } = req.body;
 
-    try {
-        const pool = await sql.connect(config);
+  try {
+    const pool = await sql.connect(config);
 
-        // Lấy CartID
-        const cartResult = await pool.request()
-            .input("CustomerID", sql.Int, customerId)
-            .query("SELECT CartID FROM Cart WHERE CustomerID_Cart=@CustomerID");
+    // Lấy CartID
+    const cartResult = await pool.request()
+      .input("CustomerID", sql.Int, customerId)
+      .query("SELECT CartID FROM Cart WHERE CustomerID_Cart=@CustomerID");
 
-        if (cartResult.recordset.length === 0)
-            return res.status(400).json({ error: "Giỏ hàng trống!" });
+    if (cartResult.recordset.length === 0)
+      return res.status(400).json({ error: "Giỏ hàng trống!" });
 
-        const cartId = cartResult.recordset[0].CartID;
+    const cartId = cartResult.recordset[0].CartID;
 
-        // Lấy Cart_Item
-        const items = await pool.request()
-            .input("CartID", sql.Int, cartId)
-            .query(`SELECT * FROM Cart_Item WHERE CartID_Item=@CartID`);
+    // Lấy Cart_Item
+    const items = await pool.request()
+      .input("CartID", sql.Int, cartId)
+      .query(`SELECT * FROM Cart_Item WHERE CartID_Item=@CartID`);
 
-        if (items.recordset.length === 0)
-            return res.status(400).json({ error: "Không có sản phẩm trong giỏ!" });
+    if (items.recordset.length === 0)
+      return res.status(400).json({ error: "Không có sản phẩm trong giỏ!" });
 
-        const cartItems = items.recordset;
+    const cartItems = items.recordset;
 
-        // Tính tổng tiền
-        let total = 0;
-        cartItems.forEach(i => {
-            total += i.CartQuantity * parseFloat(i.PriceAtAddTime);
-        });
+    // Tính tổng tiền
+    let total = 0;
+    cartItems.forEach(i => {
+      total += i.CartQuantity * parseFloat(i.PriceAtAddTime);
+    });
 
-        const shippingFee = 30000;
-        const finalTotal = total + shippingFee;
+    const shippingFee = 30000;
+    const finalTotal = total + shippingFee;
 
-        // Tạo Order
-        const orderResult = await pool.request()
-            .input("Amount", sql.Decimal(18, 2), finalTotal)
-            .input("Method", sql.NVarChar, paymentMethod)
-            .input("Status", sql.NVarChar, "Completed")
-            .input("Date", sql.Date, new Date())
-            .input("CustomerID", sql.Int, customerId)
-            .query(`
-                INSERT INTO [Order] (TotalAmountOrder, PaymentMethod, OrderStatus, OrderDate, CustomerID_Order)
-                OUTPUT inserted.OrderID
-                VALUES (@Amount, @Method, @Status, @Date, @CustomerID)
-            `);
-
-        const orderId = orderResult.recordset[0].OrderID;
-
-        // Thêm Order_Detail
-        for (const item of cartItems) {
-            await pool.request()
-                .input("OrderID", sql.Int, orderId)
-                .input("ProductID", sql.Int, item.ProductID_Item)
-                .input("Quantity", sql.Int, item.CartQuantity)
-                .input("Price", sql.Decimal(18,2), item.PriceAtAddTime)
-                .query(`
-                    INSERT INTO Order_Detail (OrderID_Detail, ProductID_Detail, OrderQuantity, UnitPrice)
-                    VALUES (@OrderID, @ProductID, @Quantity, @Price)
-                `);
-        }
-
-        // Xóa giỏ hàng
-        await pool.request()
-            .input("CartID", sql.Int, cartId)
-            .query("DELETE FROM Cart_Item WHERE CartID_Item=@CartID");
-
-        await pool.request()
-            .input("CartID", sql.Int, cartId)
-            .query("DELETE FROM Cart WHERE CartID=@CartID");
-
-        res.json({ message: "Thanh toán thành công!" });
-
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: err.message });
+    // ===============================
+    // ⭐ TRỪ SỐ LƯỢNG TRONG PRODUCT
+    // ===============================
+    for (const item of cartItems) {
+      await pool.request()
+        .input("ProductID", sql.Int, item.ProductID_Item)
+        .input("Quantity", sql.Int, item.CartQuantity)
+        .query(`
+          UPDATE Product
+          SET StockQuantity = StockQuantity - @Quantity
+          WHERE ProductID = @ProductID AND StockQuantity >= @Quantity
+        `);
     }
+
+    // ===============================
+    // TẠO ORDER
+    // ===============================
+    const orderResult = await pool.request()
+      .input("Amount", sql.Decimal(18, 2), finalTotal)
+      .input("Method", sql.NVarChar, paymentMethod)
+      .input("Status", sql.NVarChar, "Completed")
+      .input("Date", sql.Date, new Date())
+      .input("CustomerID", sql.Int, customerId)
+      .query(`
+        INSERT INTO [Order] (TotalAmountOrder, PaymentMethod, OrderStatus, OrderDate, CustomerID_Order)
+        OUTPUT inserted.OrderID
+        VALUES (@Amount, @Method, @Status, @Date, @CustomerID)
+      `);
+
+    const orderId = orderResult.recordset[0].OrderID;
+
+    // ===============================
+    // ORDER DETAIL
+    // ===============================
+    for (const item of cartItems) {
+      await pool.request()
+        .input("OrderID", sql.Int, orderId)
+        .input("ProductID", sql.Int, item.ProductID_Item)
+        .input("Quantity", sql.Int, item.CartQuantity)
+        .input("Price", sql.Decimal(18,2), item.PriceAtAddTime)
+        .query(`
+          INSERT INTO Order_Detail (OrderID_Detail, ProductID_Detail, OrderQuantity, UnitPrice)
+          VALUES (@OrderID, @ProductID, @Quantity, @Price)
+        `);
+    }
+
+    // ===============================
+    // XÓA GIỎ HÀNG
+    // ===============================
+    await pool.request()
+      .input("CartID", sql.Int, cartId)
+      .query("DELETE FROM Cart_Item WHERE CartID_Item=@CartID");
+
+    await pool.request()
+      .input("CartID", sql.Int, cartId)
+      .query("DELETE FROM Cart WHERE CartID=@CartID");
+
+    res.json({ message: "Thanh toán thành công!" });
+
+  } catch (err) {
+    console.error("Lỗi checkout:", err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 
