@@ -86,7 +86,19 @@ export default function Cart() {
                 <tr key={item.ProductID}>
                   <td>{item.ProductName}</td>
                   <td>
-                    <img src={item.ProductImage || "/no-image.jpg"} alt={item.ProductName} className={styles.img} />
+                    <img
+  src={
+    item.MainImage 
+      ? (item.MainImage.startsWith("http")
+            ? item.MainImage
+            : `http://localhost:5000/${item.MainImage}`)
+      : "/no-image.jpg"
+  }
+  alt={item.ProductName}
+  className={styles.img}
+  onError={(e) => (e.target.src = "/no-image.jpg")}
+/>
+
                   </td>
                   <td>{formatPrice(item.PriceAtAddTime)}</td>
                   <td>

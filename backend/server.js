@@ -7,6 +7,9 @@ const cartRoutes = require("./routes/cart");
 const storeRoutes = require("./routes/store");
 const uploadRoutes = require("./routes/upload");
 const checkoutRoutes = require("./routes/checkout");
+const wishlistRoutes = require("./routes/wishlist");
+
+
 const db = require("./db")
 
 const app = express();
@@ -29,6 +32,7 @@ app.use("/store", storeRoutes);
 app.use("/upload", uploadRoutes);
 app.use("/uploads", express.static("uploads"));
 app.use("/checkout", checkoutRoutes);
+app.use("/wishlist", wishlistRoutes);
 
 
 app.listen(5000, () => {
